@@ -14,6 +14,15 @@ pub fn main() -> Nil {
 }
 
 fn read_file(stream: FileStream) -> #(List(Int), List(Int)) {
-  echo line
-  #([], [])
+  let n = []
+  let m = []
+  let line = file_stream.read_bytes(stream, 5)
+  #(n, m)
+}
+
+fn read_line(line: String) -> String {
+  case line {
+    
+  }
+  line
 }
