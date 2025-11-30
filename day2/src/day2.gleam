@@ -24,7 +24,11 @@ fn count_safe_reports(acc: Int, stream: FileStream) -> Int {
     Error(file_stream_error.Eof) -> acc
     Ok(report) -> {
       case check_safety(report) {
-        False -> count_safe_reports(acc, stream)
+        False -> {
+          acc
+          |> dampen_problem(report)
+          |> count_safe_reports(stream)
+        }
         True -> count_safe_reports(acc + 1, stream)
       }
     }
@@ -32,27 +36,40 @@ fn count_safe_reports(acc: Int, stream: FileStream) -> Int {
   }
 }
 
+fn dampen_problem(s: Int, report: List(Int)) -> Int {
+  let #(safe, _) =
+    report
+    |> list.fold_until(#(s, 0), fn(acc, _) {
+      let #(safe, i) = acc
+      let #(left, right) = report |> list.split(i)
+      let dampened = left |> list.append(right |> list.drop(1))
+      case check_safety(dampened) {
+        True -> Stop(#(safe + 1, i + 1))
+        False -> Continue(#(safe, i + 1))
+      }
+    })
+  safe
+}
+
 fn check_safety(report: List(Int)) -> Bool {
   let start_order = case report {
     [a, b, ..] -> int.compare(a, b)
     _ -> order.Eq
   }
-  let #(_, is_safe) =
-    report
-    |> list.window_by_2()
-    |> list.fold_until(#(start_order, True), fn(acc, t) {
-      let has_trend = case int.compare(t.0, t.1) == acc.0 {
-        True -> Continue(#(acc.0, True))
-        False -> Stop(#(acc.0, False))
-      }
+  report
+  |> list.window_by_2()
+  |> list.fold_until(True, fn(acc, t) {
+    let has_trend = case int.compare(t.0, t.1) == start_order {
+      True -> Continue(True)
+      False -> Stop(False)
+    }
 
-      let abs_val = int.absolute_value(t.0 - t.1)
-      case abs_val >= 1 && abs_val <= 3 {
-        True -> has_trend
-        False -> Stop(#(acc.0, False))
-      }
-    })
-  is_safe
+    let abs_val = int.absolute_value(t.0 - t.1)
+    case abs_val >= 1 && abs_val <= 3 {
+      True -> has_trend
+      False -> Stop(False)
+    }
+  })
 }
 
 fn next_report(stream: FileStream) -> Result(List(Int), FileStreamError) {
