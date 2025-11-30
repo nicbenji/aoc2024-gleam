@@ -1,7 +1,7 @@
 import file_streams/file_stream.{type FileStream}
 import file_streams/file_stream_error.{type FileStreamError}
 import gleam/int
-import gleam/list
+import gleam/list.{Continue, Stop}
 import gleam/order
 import gleam/result
 import gleam/string
@@ -26,11 +26,11 @@ fn similarity_score(n: List(Int), m: List(Int)) -> Int {
   use score, num <- list.fold(n, 0)
   let amount =
     m
-    |> list.fold(0, fn(acc, x) {
+    |> list.fold_until(0, fn(acc, x) {
       case int.compare(num, x) {
-        // Early exit on Gt would be nice
-        order.Gt | order.Lt -> acc
-        order.Eq -> acc + 1
+        order.Lt -> Stop(acc)
+        order.Eq -> Continue(acc + 1)
+        order.Gt -> Continue(acc)
       }
     })
 
@@ -68,8 +68,8 @@ fn next_location_id_pair(
 ) -> Result(#(Int, Int), FileStreamError) {
   use line <- result.try(file_stream.read_line(stream))
   let assert Ok(parts) = string.split_once(line, " ")
-  let assert Ok(n) = int.base_parse(parts.0, 10)
-  let assert Ok(m) = int.base_parse(string.trim(parts.1), 10)
+  let assert Ok(n) = int.parse(parts.0)
+  let assert Ok(m) = int.parse(string.trim(parts.1))
   Ok(#(n, m))
 }
 // vim: ts=2 sts=2 sw=2 et
